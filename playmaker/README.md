@@ -2,6 +2,10 @@
 
 Playmaker is a local-first football analysis prototype. The main workflow lets a user place players and the ball on a pitch, configure the match state, analyse possible next plays, and save or reload scenarios in the browser.
 
+Presentation: https://prezi.com/craft?load=nzbYpQ1Riox9uA8VMS3qm6
+
+Live site: https://playmaker-0fjv.onrender.com/
+
 ## Run locally
 
 ```bash
