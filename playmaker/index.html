@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Playmaker | Match intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand-mark"><span class="brand-dot"></span><span>playmaker</span></div>
+        <div class="workspace-label">Workspace</div>
+        <nav class="main-nav" aria-label="Main navigation">
+          <a class="nav-item active" href="#analysis"><span class="nav-icon">+</span>New analysis</a>
+          <a class="nav-item" id="savedNav" href="#scenarios"><span class="nav-icon">◒</span>Saved scenarios <span class="saved-count" id="savedCount">0</span></a>
+          <a class="nav-item" id="modelsNav" href="#models"><span class="nav-icon">⌁</span>Model insights</a>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="model-status"><span class="status-pulse"></span><div><strong id="modelStatus">Loading model</strong><small id="modelMeta">Local tactical baseline</small></div></div>
+          <button class="nav-item nav-button" id="settingsNav" type="button"><span class="nav-icon">⚙</span>Account settings</button>
+          <button class="profile" id="accountButton" type="button"><div class="avatar">G</div><div><strong id="profileName">Guest</strong><small id="profileType">Guest session</small></div><span class="more">•••</span></button>
+        </div>
+      </aside>
+
+      <main class="main-content" id="analysis">
+        <header class="topbar">
+          <div><p class="eyebrow">Matchday workspace <span class="live-tag">LIVE</span></p><h1>Build a play</h1></div>
+          <div class="top-actions"><span class="auth-status guest" id="authStatus" role="status">Guest mode</span><button class="theme-button" id="themeButton" type="button">◐ <span>Dark mode</span></button><button class="help-button" id="helpButton">? <span>How it works</span></button></div>
+        </header>
+
+        <section class="match-strip">
+          <div class="fixture"><div class="team-badge home-badge">A</div><div><strong id="homeTeamLabel">Home team</strong><small>Home</small></div><span class="score">2</span></div>
+          <div class="match-time"><span id="matchMinuteLabel">72:00</span><small>Match minute</small></div>
+          <div class="fixture away-fixture"><span class="score">1</span><div><strong id="awayTeamLabel">Away team</strong><small>Away</small></div><div class="team-badge away-badge">B</div></div>
+          <div class="match-context"><span class="context-icon">↗</span><div><small>Current momentum</small><strong id="momentumLabel">Home team +18%</strong></div></div>
+        </section>
+
+        <section class="match-settings" aria-label="Match settings"><label>Home team<input id="homeTeamInput" value="Arsenal" maxlength="28" /></label><label>Away team<input id="awayTeamInput" value="Brighton" maxlength="28" /></label><label>Minute<input id="minuteInput" type="number" min="0" max="120" value="72" /></label></section>
+
+        <div class="content-grid">
+          <section class="workspace-panel">
+            <div class="panel-heading"><div><span class="section-kicker">01 / Positioning</span><h2>Set the scene</h2></div><div class="pitch-tools"><button class="tool-button active" data-tool="player">● <span id="homeToolLabel">Home team</span></button><button class="tool-button" data-tool="opponent">● <span id="awayToolLabel">Away team</span></button><button class="tool-button" data-tool="ball">○ <span>Ball</span></button><button class="tool-button" data-tool="erase">× <span>Brush</span></button></div></div>
+            <div class="pitch-wrap">
+              <div class="pitch" id="pitch" aria-label="Interactive football pitch. Click to place a player.">
+                <div class="pitch-line halfway"></div><div class="pitch-circle"></div><div class="pitch-spot"></div>
+                <div class="penalty-box left-box"></div><div class="goal left-goal"></div><div class="six-yard left-six"></div>
+                <div class="penalty-box right-box"></div><div class="goal right-goal"></div><div class="six-yard right-six"></div>
+                <div id="markerLayer"></div>
+                <div class="erase-brush" id="eraseBrush" aria-hidden="true"></div>
+                <div class="pitch-hint" id="pitchHint">Click anywhere to add a player</div>
+              </div>
+              <div class="pitch-caption"><span><i class="legend-dot player-legend"></i><span id="homeLegend">Home team</span></span><span><i class="legend-dot opponent-legend"></i><span id="awayLegend">Away team</span></span><span><i class="legend-dot ball-legend"></i>Ball</span><span class="caption-note" id="markerCount">Home team 3/11 · Away team 0/11</span></div>
+            </div>
+            <div class="configuration-row"><label>Game state<select id="gameState"><option value="open-play">Open play</option><option value="set-piece">Set piece</option><option value="counter-attack">Counter attack</option></select></label><label>Team mentality<select id="mentality"><option value="positive">Positive</option><option value="balanced">Balanced</option><option value="conservative">Conservative</option></select></label><label>Risk appetite<div class="range-value"><input id="risk" type="range" min="0" max="100" value="62" /><span id="riskValue">62%</span></div></label></div>
+            <div class="action-row"><button class="secondary-action" id="resetButton">Reset scene</button><button class="secondary-action" id="saveButton">Save scenario</button><button class="primary-action" id="analyseButton"><span class="spark">✦</span> Analyse next plays <span class="arrow">→</span></button></div>
+          </section>
+
+          <aside class="recommendations-panel">
+            <div class="panel-heading recommendations-heading"><div><span class="section-kicker">02 / Intelligence</span><h2>Likely next plays</h2></div><span class="model-badge">AI MODEL <b>0.4</b></span></div>
+            <p class="panel-intro" id="panelIntro">Based on the current shape, scoreline, and 48,213 similar moments.</p>
+            <div class="recommendation-list" id="recommendations"></div>
+            <div class="insight"><span class="insight-icon">✦</span><div><strong>Model insight</strong><p id="insightText"></p></div></div>
+          </aside>
+        </div>
+        <footer class="page-footer"><span>Last model update 4 mins ago</span><span>Data coverage: 2018–2025 <b>·</b> 1.2m events</span><span class="keyboard-hint">Press <kbd>⌘</kbd><kbd>K</kbd> for quick actions</span></footer>
+      </main>
+    </div>
+
+    <dialog class="modal-dialog account-dialog" id="accountPanel">
+      <div class="modal-header"><div><span class="section-kicker">Account</span><h2 id="accountTitle">Log in to Playmaker</h2></div><button class="modal-close" id="accountClose" type="button" aria-label="Close account">×</button></div>
+      <div class="auth-mode" role="tablist"><button class="auth-tab active" id="loginMode" type="button" role="tab">Log in</button><button class="auth-tab" id="registerMode" type="button" role="tab">Create account</button></div>
+      <form id="accountForm" class="account-form">
+        <p class="guest-status" id="guestStatus">You are browsing as a guest. Log in to sync saved scenarios.</p>
+        <label id="accountNameField" hidden>Display name<input id="accountName" name="name" autocomplete="name" /></label>
+        <label>Email<input id="accountEmail" name="email" type="email" autocomplete="email" required /></label>
+        <label>Password<input id="accountPassword" name="password" type="password" minlength="8" autocomplete="current-password" required /></label>
+        <p class="account-status" id="accountStatus"></p>
+        <button class="primary-action" id="accountSubmit" type="submit">Log in <span class="arrow">→</span></button>
+        <button class="secondary-action logout-action" id="logoutButton" type="button" hidden>Log out</button>
+      </form>
+    </dialog>
+
+    <dialog class="modal-dialog help-dialog" id="helpPanel">
+      <div class="modal-header"><div><span class="section-kicker">Guide</span><h2>How Playmaker works</h2></div><button class="modal-close" id="helpClose" type="button" aria-label="Close guide">×</button></div>
+      <div class="help-copy"><p><strong>1. Set the scene</strong> Choose a team tool, then place up to 11 players for either side and the ball on the pitch.</p><p><strong>2. Shape the context</strong> Adjust game state, mentality, and risk appetite to describe the decision.</p><p><strong>3. Compare options</strong> Analyse the scene, then select a recommendation to see its movement and tactical explanation.</p><p><strong>4. Edit quickly</strong> Choose Brush and drag around the pitch to erase every player inside the brush ring.</p><p><strong>5. Keep the work</strong> Save scenarios to your account or continue locally when the API is unavailable.</p></div>
+    </dialog>
+
+    <dialog class="modal-dialog saved-dialog" id="savedPanel">
+      <div class="modal-header"><div><span class="section-kicker">Workspace library</span><h2>Saved scenarios</h2></div><button class="modal-close" id="savedClose" type="button" aria-label="Close saved scenarios">×</button></div>
+      <p class="modal-intro">Your latest match shapes, ready to reopen and compare.</p>
+      <ul class="saved-list" id="savedList"></ul>
+    </dialog>
+
+    <dialog class="modal-dialog animation-dialog" id="animationDialog">
+      <div class="modal-header"><div><span class="section-kicker">Play visualiser</span><h2 id="animationTitle">Progressive pass</h2></div><button class="modal-close" id="animationClose" type="button" aria-label="Close play visualiser">×</button></div>
+      <div class="animation-layout">
+        <div class="animation-pitch" id="animationPitch"></div>
+        <div class="animation-copy"><p id="animationExplanation" class="animation-explanation"></p><ol class="animation-steps" id="animationSteps"></ol></div>
+      </div>
+    </dialog>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

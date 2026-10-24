@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: playmaker
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/health
+    disk:
+      name: playmaker-data
+      mountPath: /app/data
+      sizeGB: 1
