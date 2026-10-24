@@ -223,29 +223,43 @@ function animateLivePitch(playId) {
 }
 
 function renderAnimationPitch(playId) {
-  animationPitch.innerHTML = '<div class="animation-halfway"></div><div class="animation-ball" id="animationBall"></div><div class="animation-player animation-start" id="animationPlayer">10</div><div class="animation-target" id="animationTarget"></div>';
+  animationPitch.innerHTML = '<div class="pitch-line halfway"></div><div class="pitch-circle"></div><div class="pitch-spot"></div><div class="penalty-box left-box"></div><div class="goal left-goal"></div><div class="six-yard left-six"></div><div class="penalty-box right-box"></div><div class="goal right-goal"></div><div class="six-yard right-six"></div><div id="animationMarkers"></div><div class="animation-target" id="animationTarget"></div>';
+  const markers = animationPitch.querySelector('#animationMarkers');
+  state.players.forEach((player) => markers.appendChild(createAnimationMarker(player, 'player')));
+  markers.appendChild(createAnimationMarker({ ...state.ball, id: 'ball' }, 'ball'));
   animationPitch.dataset.playId = playId;
 }
 
 function runAnimation(playId) {
-  const ball = animationPitch.querySelector('#animationBall');
-  const player = animationPitch.querySelector('#animationPlayer');
+  const ball = animationPitch.querySelector('[data-animation-type="ball"]');
+  const playerState = [...state.players].filter((player) => (player.team || 'home') === 'home').sort((first, second) => distanceToBall(first) - distanceToBall(second))[0];
+  const player = playerState && animationPitch.querySelector(`[data-animation-id="${playerState.id}"]`);
   const target = animationPitch.querySelector('#animationTarget');
-  const routes = {
-    'progressive-pass': { player: ['24%', '56%'], target: ['70%', '39%'], ball: [['26%', '54%'], ['69%', '39%']] },
-    'switch-of-play': { player: ['37%', '53%'], target: ['80%', '23%'], ball: [['38%', '52%'], ['80%', '23%']] },
-    'carry-forward': { player: ['30%', '55%'], target: ['62%', '46%'], ball: [['32%', '54%'], ['61%', '46%']] },
-    'safe-recycle': { player: ['48%', '52%'], target: ['30%', '39%'], ball: [['48%', '52%'], ['30%', '39%']] },
-  };
-  const route = routes[playId] || routes['safe-recycle'];
-  player.style.left = route.player[0];
-  player.style.top = route.player[1];
-  target.style.left = route.target[0];
-  target.style.top = route.target[1];
-  ball.style.left = route.ball[0][0];
-  ball.style.top = route.ball[0][1];
-  ball.animate([{ left: route.ball[0][0], top: route.ball[0][1] }, { left: route.ball[1][0], top: route.ball[1][1] }], { duration: 1800, easing: 'cubic-bezier(.22,.61,.36,1)', iterations: 2, direction: 'alternate' });
-  player.animate([{ transform: 'translate(-50%, -50%)' }, { transform: 'translate(-50%, -50%) translate(16px, -5px)' }], { duration: 1800, easing: 'ease-in-out', iterations: 2, direction: 'alternate' });
+  if (!ball || !player || typeof ball.animate !== 'function') return;
+  const targetPosition = animationTarget(playId);
+  const playerPosition = playId === 'safe-recycle' ? { x: Math.max(0.08, targetPosition.x - 0.12), y: targetPosition.y } : targetPosition;
+  target.style.left = `${targetPosition.x * 100}%`;
+  target.style.top = `${targetPosition.y * 100}%`;
+  ball.animate([{ left: ball.style.left, top: ball.style.top }, { left: `${targetPosition.x * 100}%`, top: `${targetPosition.y * 100}%` }], { duration: 1800, easing: 'cubic-bezier(.22,.61,.36,1)', iterations: 2, direction: 'alternate' });
+  player.animate([{ left: player.style.left, top: player.style.top }, { left: `${playerPosition.x * 100}%`, top: `${playerPosition.y * 100}%` }], { duration: 1800, easing: 'ease-in-out', iterations: 2, direction: 'alternate' });
+}
+
+function createAnimationMarker(marker, type) {
+  const element = document.createElement('div');
+  element.className = type === 'ball' ? 'animation-ball' : marker.team === 'away' ? 'animation-player animation-opponent' : 'animation-player';
+  element.dataset.animationId = marker.id;
+  element.dataset.animationType = type;
+  element.style.left = `${marker.x * 100}%`;
+  element.style.top = `${marker.y * 100}%`;
+  if (type === 'player') element.textContent = marker.number;
+  return element;
+}
+
+function distanceToBall(player) { return Math.hypot(player.x - state.ball.x, player.y - state.ball.y); }
+
+function animationTarget(playId) {
+  const delta = { 'progressive-pass': { x: 0.28, y: -0.1 }, 'switch-of-play': { x: 0.2, y: -0.3 }, 'carry-forward': { x: 0.22, y: 0 }, 'safe-recycle': { x: -0.2, y: -0.12 } }[playId] || { x: 0.1, y: 0 };
+  return { x: clamp(state.ball.x + delta.x), y: clamp(state.ball.y + delta.y) };
 }
 
 async function saveScenario() {
