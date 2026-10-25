@@ -6,7 +6,7 @@ ENV PORT=4173
 
 COPY package.json ./
 COPY README.md ./
-COPY index.html styles.css app.js analysis.js server.js ./
+COPY index.html styles.css app.js analysis.js server.js workspace.js report.js ./
 COPY model/model.json ./model/model.json
 
 RUN mkdir -p /app/data

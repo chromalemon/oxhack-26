@@ -38,9 +38,34 @@ def fetch_json(url: str, destination: Path | None = None):
     return payload
 
 
-def load_matches(max_matches: int) -> list[dict]:
+def match_passes_filters(match: dict, league: str | None = None, team: str | None = None, competition: str | None = None, player: str | None = None) -> bool:
+    competition_name = (match.get("competition") or {}).get("competition_name") or match.get("competition_name")
+    if league and competition_name != league:
+        return False
+    if competition and (match.get("competition") or {}).get("competition_name") != competition and match.get("competition_name") != competition:
+        return False
+    home = (match.get("home_team") or {}).get("home_team_name") or (match.get("home_team") or {}).get("name")
+    away = (match.get("away_team") or {}).get("away_team_name") or (match.get("away_team") or {}).get("name")
+    if team and team not in {home, away}:
+        return False
+    return True
+
+
+def load_feedback(path: Path) -> list[tuple[list[float], str]]:
+    payload = json.loads(path.read_text())
+    samples = []
+    for row in payload:
+        features = row.get("features")
+        label = row.get("label")
+        if isinstance(features, list) and label in ACTION_LABELS:
+            samples.append(([float(value) for value in features], label))
+    return samples
+
+
+def load_matches(max_matches: int, league: str | None = None, team: str | None = None, competition: str | None = None) -> list[dict]:
     matches = fetch_json(f"{BASE_URL}/matches/{COMPETITION_ID}/{SEASON_ID}.json", DATA_DIR / f"matches-{COMPETITION_ID}-{SEASON_ID}.json")
-    return matches[:max_matches]
+    filtered = [match for match in matches if match_passes_filters(match, league=league, team=team, competition=competition)]
+    return filtered[:max_matches]
 
 
 def load_events(match_id: int) -> list[dict]:
@@ -72,7 +97,7 @@ def event_features(event: dict, frame: dict | None = None) -> list[float] | None
     return [x, y, 1 - x, 1 - abs(y - 0.5) * 2, period, minute, nearby_count / 11, min(nearest_opponent, 1), min(pressure, 1)]
 
 
-def build_samples(events: list[dict], frames: dict[str, dict] | None = None) -> list[tuple[list[float], str]]:
+def build_samples(events: list[dict], frames: dict[str, dict] | None = None, player: str | None = None) -> list[tuple[list[float], str]]:
     samples = []
     for index, event in enumerate(events[:-1]):
         features = event_features(event, (frames or {}).get(event.get("id")))
@@ -80,6 +105,8 @@ def build_samples(events: list[dict], frames: dict[str, dict] | None = None) -> 
             continue
         next_event = next((candidate for candidate in events[index + 1 : index + 8] if candidate.get("team", {}).get("id") == event.get("team", {}).get("id")), None)
         if next_event is None:
+            continue
+        if player and (next_event.get("player") or {}).get("name", "").casefold() != player.casefold():
             continue
         samples.append((features, action_label(next_event)))
     return samples
@@ -126,8 +153,13 @@ def evaluate(samples: list[tuple[list[float], str]], weights: list[list[float]],
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--max-matches", type=int, default=24, help="Number of matches to download (default: 24)")
+    parser.add_argument("--league", help="Keep matches from this competition name")
+    parser.add_argument("--team", help="Keep matches involving this team")
+    parser.add_argument("--competition", help="Keep matches from this competition name")
+    parser.add_argument("--player", help="Keep next-action samples performed by this player")
+    parser.add_argument("--feedback", help="Optional JSON file of labeled feature rows used to continue training")
     args = parser.parse_args()
-    matches = load_matches(args.max_matches)
+    matches = load_matches(args.max_matches, league=args.league, team=args.team, competition=args.competition)
     all_samples = []
     loaded_matches = 0
     for match in matches:
@@ -135,10 +167,12 @@ def main() -> None:
             frames = load_freeze_frames(match["match_id"])
         except urllib.error.HTTPError:
             frames = {}
-        samples = build_samples(load_events(match["match_id"]), frames)
+        samples = build_samples(load_events(match["match_id"]), frames, player=args.player)
         if samples:
             all_samples.extend(samples)
             loaded_matches += 1
+    if args.feedback:
+        all_samples.extend(load_feedback(Path(args.feedback)))
     if len(all_samples) < 50:
         raise RuntimeError(f"Only {len(all_samples)} samples were found; refusing to train a weak artifact.")
     split_index = max(1, int(len(all_samples) * 0.8))

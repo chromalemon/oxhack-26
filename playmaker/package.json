@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test",
+    "test": "node --test analysis.test.js workspace.test.js report.test.js server.test.js",
     "test:server": "node --test server.test.js",
     "test:model": "python3 -m unittest discover model -p 'test_*.py'",
     "train:model": "python3 model/train_model.py --max-matches 24",
